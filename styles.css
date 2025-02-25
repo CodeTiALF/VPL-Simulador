@@ -251,22 +251,64 @@ input:focus {
 
 #fluxo-pagamento {
     margin-top: 15px;
+    overflow-x: auto;
 }
 
 #fluxo-pagamento table {
     width: 100%;
     border-collapse: collapse;
+    font-size: 14px;
+    white-space: nowrap;
 }
 
 #fluxo-pagamento th,
 #fluxo-pagamento td {
-    padding: 12px;
+    padding: 8px 12px;
+    text-align: right;
+    border: 1px solid var(--border-color);
+}
+
+#fluxo-pagamento th:first-child,
+#fluxo-pagamento td:first-child,
+#fluxo-pagamento th:nth-child(2),
+#fluxo-pagamento td:nth-child(2) {
     text-align: left;
-    border-bottom: 1px solid var(--border-color);
 }
 
 #fluxo-pagamento th {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 600;
+}
+
+#fluxo-pagamento tr:nth-child(even) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+#fluxo-pagamento tfoot tr {
     background-color: rgba(0, 0, 0, 0.05);
+    font-weight: 600;
+}
+
+#fluxo-pagamento tfoot td {
+    border-top: 2px solid var(--border-color);
+}
+
+@media print {
+    #fluxo-pagamento table {
+        font-size: 12px;
+    }
+    
+    #fluxo-pagamento th,
+    #fluxo-pagamento td {
+        padding: 6px 8px;
+    }
+    
+    .resultado {
+        box-shadow: none;
+        margin: 0;
+        padding: 0;
+    }
 }
 
 footer {

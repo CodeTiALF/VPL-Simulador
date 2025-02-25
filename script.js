@@ -19,8 +19,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Event listeners para atualização automática dos resultados
     document.querySelectorAll('input').forEach(input => {
-        input.addEventListener('change', verificarFormulario);
+        input.addEventListener('change', () => {
+            verificarFormulario();
+            salvarFormulario();
+        });
     });
+
+    // Carrega os dados salvos ao iniciar
+    carregarFormulario();
     
     /**
      * Inicializa o tema com base na preferência salva
@@ -68,15 +74,19 @@ document.addEventListener('DOMContentLoaded', function() {
         
         parcelasContainer.appendChild(parcelaDiv);
         
+        // Adiciona eventos de mudança aos novos inputs
+        parcelaDiv.querySelectorAll('input').forEach(input => {
+            input.addEventListener('change', () => {
+                verificarFormulario();
+                salvarFormulario();
+            });
+        });
+
         // Adiciona evento para remover a parcela
         parcelaDiv.querySelector('.remover-parcela').addEventListener('click', function() {
             parcelasContainer.removeChild(parcelaDiv);
             verificarFormulario();
-        });
-        
-        // Adiciona eventos de mudança aos novos inputs
-        parcelaDiv.querySelectorAll('input').forEach(input => {
-            input.addEventListener('change', verificarFormulario);
+            salvarFormulario();
         });
     }
     
@@ -257,36 +267,36 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>${formatarMoeda(acumulado)}</td>
                     <td>${percentual.toFixed(2)}%</td>
                 </tr>
-            `;
+            `.trim();
         });
         
         html += `
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="3"><strong>Totais:</strong></td>
-                        <td><strong>${formatarMoeda(valorTabela)}</strong></td>
-                        <td colspan="2"></td>
-                    </tr>
-                    <tr>
-                        <td colspan="3">Total "Até as Chaves":</td>
-                        <td>${formatarMoeda(totalAteChaves)}</td>
-                        <td colspan="2">${((totalAteChaves / valorTabela) * 100).toFixed(2)}%</td>
-                    </tr>
-                    <tr>
-                        <td colspan="3">Saldo para Financiamento:</td>
-                        <td>${formatarMoeda(saldoFinanciamento)}</td>
-                        <td colspan="2">${((saldoFinanciamento / valorTabela) * 100).toFixed(2)}%</td>
-                    </tr>
-                </tfoot>
-            </table>
-        `;
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3"><strong>Total do Imóvel:</strong></td>
+                    <td><strong>${formatarMoeda(valorTabela)}</strong></td>
+                    <td colspan="2"></td>
+                </tr>
+                <tr>
+                    <td colspan="3">Total "Até as Chaves":</td>
+                    <td>${formatarMoeda(totalAteChaves)}</td>
+                    <td colspan="2">${((totalAteChaves / valorTabela) * 100).toFixed(2)}%</td>
+                </tr>
+                <tr>
+                    <td colspan="3">Saldo para Financiamento:</td>
+                    <td>${formatarMoeda(saldoFinanciamento)}</td>
+                    <td colspan="2">${((saldoFinanciamento / valorTabela) * 100).toFixed(2)}%</td>
+                </tr>
+            </tfoot>
+        </table>
+        `.trim();
         
         fluxoPagamento.innerHTML = html;
     }
     
     /**
-     * Exporta o relatório como imagem
+     * Exporta o relatório como PDF
      */
     function exportarRelatorio() {
         // Garante que a simulação foi calculada
@@ -297,32 +307,161 @@ document.addEventListener('DOMContentLoaded', function() {
             acao: 'exportacao',
             timestamp: new Date()
         });
-        
-        // Usa html2canvas para gerar uma imagem do relatório
-        const elementoExportar = document.querySelector('.resultado');
-        
-        // Adiciona o script html2canvas ao documento se não existir
-        if (!window.html2canvas) {
+
+        // Adiciona o script jsPDF ao documento se não existir
+        if (!window.jsPDF) {
             const script = document.createElement('script');
-            script.src = 'https://html2canvas.hertzen.com/dist/html2canvas.min.js';
-            script.onload = () => captureAndDownload(elementoExportar);
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+            script.onload = () => generateAndDownloadPDF();
             document.head.appendChild(script);
         } else {
-            captureAndDownload(elementoExportar);
+            generateAndDownloadPDF();
         }
     }
     
-    /**
-     * Captura e faz o download da imagem do relatório
-     */
-    function captureAndDownload(element) {
-        html2canvas(element).then(canvas => {
-            const imageData = canvas.toDataURL('image/png');
-            const link = document.createElement('a');
-            link.download = 'VPL_Simulacao_' + new Date().toISOString().slice(0, 10) + '.png';
-            link.href = imageData;
-            link.click();
+    function generateAndDownloadPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const elementoExportar = document.querySelector('.resultado');
+        
+        // Configurações de estilo
+        const styles = {
+            header: { fontSize: 14, fontStyle: 'bold', textColor: [66, 133, 244] },
+            title: { fontSize: 12, fontStyle: 'bold', textColor: [51, 51, 51] },
+            tableHeader: { fontSize: 9, fontStyle: 'bold', textColor: [255, 255, 255], fillColor: [66, 133, 244] },
+            tableRow: { fontSize: 8, fontStyle: 'normal', textColor: [51, 51, 51] },
+            tableFooter: { fontSize: 9, fontStyle: 'bold', textColor: [51, 51, 51] },
+            rowHeight: 5, // Altura reduzida das linhas
+            stripedRow: [240, 240, 240] // Cor para linhas alternadas
+        };
+
+        // Adiciona título
+        doc.setFontSize(styles.header.fontSize);
+        doc.setTextColor(...styles.header.textColor);
+        doc.text('Simulação VPL', 105, 15, { align: 'center' });
+
+        // Dados do imóvel
+        const valorTabela = document.getElementById('valor-tabela').value;
+        doc.setFontSize(styles.title.fontSize);
+        doc.setTextColor(...styles.title.textColor);
+        doc.text(`Valor do Imóvel: ${formatarMoeda(parseFloat(valorTabela))}`, 10, 22);
+
+        // Configuração da tabela
+        const startY = 28;
+        const margin = 10;
+        const pageWidth = doc.internal.pageSize.width;
+        const tableWidth = pageWidth - (margin * 2);
+        const columns = [
+            { header: 'N°', width: 15, align: 'left' },
+            { header: 'Tipo', width: 30, align: 'left' },
+            { header: 'Data', width: 25, align: 'center' },
+            { header: 'Valor', width: 35, align: 'right' },
+            { header: 'Acumulado', width: 35, align: 'right' },
+            { header: '% Total', width: 25, align: 'right' }
+        ];
+
+        // Desenha cabeçalho da tabela
+        let currentY = startY;
+        
+        // Desenha borda superior da tabela
+        doc.setDrawColor(220, 220, 220);
+        doc.setLineWidth(0.1);
+        doc.line(margin, currentY, margin + tableWidth, currentY);
+
+        // Fundo do cabeçalho
+        doc.setFillColor(...styles.tableHeader.fillColor);
+        doc.rect(margin, currentY, tableWidth, styles.rowHeight + 1, 'F');
+        
+        // Texto do cabeçalho
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(styles.tableHeader.fontSize);
+        let currentX = margin;
+        columns.forEach(col => {
+            doc.text(col.header, currentX + (col.align === 'right' ? col.width : 2), currentY + 4);
+            currentX += col.width;
+            // Linha vertical divisória
+            doc.line(currentX, currentY, currentX, currentY + styles.rowHeight + 1);
         });
+
+        // Obtem dados da tabela
+        const rows = Array.from(elementoExportar.querySelectorAll('tbody tr'));
+        const footerRows = Array.from(elementoExportar.querySelectorAll('tfoot tr'));
+
+        // Desenha linhas da tabela
+        currentY += styles.rowHeight + 1;
+        doc.setTextColor(...styles.tableRow.textColor);
+        doc.setFontSize(styles.tableRow.fontSize);
+
+        rows.forEach((row, index) => {
+            const cells = Array.from(row.querySelectorAll('td'));
+            
+            // Adiciona nova página se necessário
+            if (currentY > 280) {
+                doc.addPage();
+                currentY = 20;
+            }
+
+            // Fundo alternado para linhas
+            if (index % 2 === 1) {
+                doc.setFillColor(...styles.stripedRow);
+                doc.rect(margin, currentY, tableWidth, styles.rowHeight, 'F');
+            }
+
+            // Desenha células
+            currentX = margin;
+            cells.forEach((cell, i) => {
+                const text = cell.textContent.trim();
+                doc.text(text, currentX + (columns[i].align === 'right' ? columns[i].width - 2 : 2), 
+                    currentY + 3.5, { align: columns[i].align });
+                currentX += columns[i].width;
+                // Linha vertical divisória
+                doc.line(currentX, currentY, currentX, currentY + styles.rowHeight);
+            });
+
+            // Linha horizontal inferior
+            doc.line(margin, currentY + styles.rowHeight, margin + tableWidth, currentY + styles.rowHeight);
+            currentY += styles.rowHeight;
+        });
+
+        // Desenha rodapé da tabela
+        doc.setFillColor(245, 245, 245);
+        const footerHeight = styles.rowHeight + 1;
+        doc.rect(margin, currentY, tableWidth, footerHeight * footerRows.length, 'F');
+        doc.setFontSize(styles.tableFooter.fontSize);
+        doc.setTextColor(...styles.tableFooter.textColor);
+
+        footerRows.forEach((row, index) => {
+            const cells = Array.from(row.querySelectorAll('td'));
+            currentX = margin;
+            
+            cells.forEach((cell, i) => {
+                if (cell.colSpan) {
+                    const text = cell.textContent.trim();
+                    const totalWidth = columns.slice(0, cell.colSpan).reduce((sum, col) => sum + col.width, 0);
+                    doc.text(text, currentX + 2, currentY + 4, { align: 'left' });
+                    currentX += totalWidth;
+                } else {
+                    const text = cell.textContent.trim();
+                    doc.text(text, currentX + columns[i].width - 2, currentY + 4, { align: 'right' });
+                    currentX += columns[i].width;
+                }
+                // Linha vertical divisória
+                doc.line(currentX, currentY, currentX, currentY + footerHeight);
+            });
+
+            // Linha horizontal inferior
+            doc.line(margin, currentY + footerHeight, margin + tableWidth, currentY + footerHeight);
+            currentY += footerHeight;
+        });
+
+        // Adiciona data de geração
+        doc.setFontSize(7);
+        doc.setTextColor(128, 128, 128);
+        doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, pageWidth - margin, 
+            doc.internal.pageSize.height - 10, { align: 'right' });
+        
+        // Download do PDF
+        doc.save('VPL_Simulacao_' + new Date().toISOString().slice(0, 10) + '.pdf');
     }
     
     /**
@@ -350,5 +489,87 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function formatarData(data) {
         return data.toLocaleDateString('pt-BR');
+    }
+
+    /**
+     * Salva os dados do formulário no localStorage
+     */
+    function salvarFormulario() {
+        const dados = {
+            valorTabela: document.getElementById('valor-tabela').value,
+            valorSinal: document.getElementById('valor-sinal').value,
+            dataSinal: document.getElementById('data-sinal').value,
+            qtdMensais: document.getElementById('qtd-mensais').value,
+            valorMensais: document.getElementById('valor-mensais').value,
+            parcelasIntermediarias: []
+        };
+
+        // Salva dados das parcelas intermediárias
+        document.querySelectorAll('.parcela-intermediaria').forEach(parcela => {
+            dados.parcelasIntermediarias.push({
+                valor: parcela.querySelector('.intermediaria-valor').value,
+                data: parcela.querySelector('.intermediaria-data').value
+            });
+        });
+
+        localStorage.setItem('vplFormData', JSON.stringify(dados));
+    }
+
+    /**
+     * Carrega os dados salvos do localStorage
+     */
+    function carregarFormulario() {
+        const dadosSalvos = localStorage.getItem('vplFormData');
+        if (!dadosSalvos) return;
+
+        const dados = JSON.parse(dadosSalvos);
+
+        // Preenche os campos principais
+        document.getElementById('valor-tabela').value = dados.valorTabela || '';
+        document.getElementById('valor-sinal').value = dados.valorSinal || '';
+        document.getElementById('data-sinal').value = dados.dataSinal || '';
+        document.getElementById('qtd-mensais').value = dados.qtdMensais || '';
+        document.getElementById('valor-mensais').value = dados.valorMensais || '';
+
+        // Adiciona as parcelas intermediárias salvas
+        if (dados.parcelasIntermediarias && dados.parcelasIntermediarias.length > 0) {
+            dados.parcelasIntermediarias.forEach(parcela => {
+                const index = document.querySelectorAll('.parcela-intermediaria').length + 1;
+                
+                const parcelaDiv = document.createElement('div');
+                parcelaDiv.className = 'parcela-intermediaria';
+                parcelaDiv.innerHTML = `
+                    <div class="input-group">
+                        <label for="intermediaria-valor-${index}">Valor (R$):</label>
+                        <input type="number" id="intermediaria-valor-${index}" class="intermediaria-valor" min="0" step="0.01" required value="${parcela.valor}">
+                    </div>
+                    <div class="input-group">
+                        <label for="intermediaria-data-${index}">Data:</label>
+                        <input type="date" id="intermediaria-data-${index}" class="intermediaria-data" required value="${parcela.data}">
+                    </div>
+                    <button type="button" class="btn-danger remover-parcela"><i class="fas fa-trash"></i></button>
+                `;
+                
+                parcelasContainer.appendChild(parcelaDiv);
+                
+                // Adiciona evento para remover a parcela
+                parcelaDiv.querySelector('.remover-parcela').addEventListener('click', function() {
+                    parcelasContainer.removeChild(parcelaDiv);
+                    verificarFormulario();
+                    salvarFormulario();
+                });
+                
+                // Adiciona eventos de mudança aos inputs
+                parcelaDiv.querySelectorAll('input').forEach(input => {
+                    input.addEventListener('change', () => {
+                        verificarFormulario();
+                        salvarFormulario();
+                    });
+                });
+            });
+        }
+
+        // Atualiza o formulário
+        verificarFormulario();
     }
 });

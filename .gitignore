@@ -18,3 +18,7 @@ Thumbs.db
 .vscode/
 *.sublime-project
 *.sublime-workspace
+
+# arquivos ignorados pelo git
+solicitante_nomes.txt
+tabela_nomes.txt
