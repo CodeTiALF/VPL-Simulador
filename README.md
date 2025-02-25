@@ -33,6 +33,13 @@ Simulador de cálculo de Valor Presente Líquido (VPL) para investimentos em im�
 - Servidor web com suporte a PHP 7.0 ou superior
 - Navegador web moderno
 
+## Autor
+
+- **Nome:** Andre Filus
+- **GitHub:** [GitHub/CodeTiALF](https://github.com/CodeTiALF)
+- **Email:** dev@andrefilus.com.br
+- **Website:** https://codetialf.github.io
+
 ## Licença
 
 Este projeto está disponibilizado sob a licença MIT.
