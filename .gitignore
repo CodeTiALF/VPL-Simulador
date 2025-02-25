@@ -1,0 +1,20 @@
+# Arquivos e pastas específicos do projeto
+/logs/
+*.log
+
+# Arquivos de configuração de ambiente
+.env
+
+# Arquivos temporários
+*.tmp
+*.temp
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# Pastas específicas do IDE/Editor
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace

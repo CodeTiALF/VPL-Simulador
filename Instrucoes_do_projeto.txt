@@ -1,0 +1,13 @@
+Projeto de uma simulação de um VPL para imoveis na planta, para isso teremos as senguintes entradas do fluco de pagamento:
+O valor de tabela do imovel 
+O valor do Sinal e data que é a parcela de numero 0 na data do contrato.
+A mensais que deve ser informado a quantidade e o valor, loroes iguais, a primeira inicia 30 dias da data do simal.
+Parcelas Intermediarias são parcelas adicionais com datas e valores difrente das mensais podem serem acrescentadas com numero inderterrminado.
+E o saldo para financiamento que sera o restante que sobrar das parcelas, sendo que todos os valores do sinal e mais todas as parcelas serãoi concidaderados com o titulo de "ate as chaves".
+Este projeto deve ser criado em HTML + CCS + JS para toda aplicação e usando PHP apenas para gravar log que que nescessite do lado do servidor, tudo que for possivel fazer no cliente é o objetivo.
+Crie um css claro e escuro e moderno, user o JS para manter o cache do vistante de suas peferencias
+Quando todos os titens estiverem preeenchido libera o botão de exportar, que devere esporta um relatorio formal das informação podendoser em imagem.
+Publicar no github com o nome de "vpl simulação".
+Conta no github
+Email: andre@andrefilus.com.br
+Nome: CodeTiALF

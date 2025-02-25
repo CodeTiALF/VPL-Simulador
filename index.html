@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VPL Simulação - Imóveis na Planta</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Simulador VPL - Imóveis na Planta</h1>
+            <div class="theme-toggle">
+                <i class="fas fa-sun"></i>
+                <label class="switch">
+                    <input type="checkbox" id="theme-switch">
+                    <span class="slider round"></span>
+                </label>
+                <i class="fas fa-moon"></i>
+            </div>
+        </header>
+
+        <main>
+            <form id="vpl-form">
+                <div class="form-section">
+                    <h2>Informações do Imóvel</h2>
+                    <div class="input-group">
+                        <label for="valor-tabela">Valor de Tabela do Imóvel (R$):</label>
+                        <input type="number" id="valor-tabela" name="valor-tabela" min="0" step="0.01" required>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Sinal (Parcela 0)</h2>
+                    <div class="input-group">
+                        <label for="valor-sinal">Valor do Sinal (R$):</label>
+                        <input type="number" id="valor-sinal" name="valor-sinal" min="0" step="0.01" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="data-sinal">Data do Sinal:</label>
+                        <input type="date" id="data-sinal" name="data-sinal" required>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Mensais</h2>
+                    <div class="input-group">
+                        <label for="qtd-mensais">Quantidade de Parcelas:</label>
+                        <input type="number" id="qtd-mensais" name="qtd-mensais" min="1" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="valor-mensais">Valor das Parcelas (R$):</label>
+                        <input type="number" id="valor-mensais" name="valor-mensais" min="0" step="0.01" required>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Parcelas Intermediárias</h2>
+                    <div id="parcelas-intermediarias">
+                        <!-- Parcelas intermediárias serão adicionadas dinamicamente aqui -->
+                    </div>
+                    <button type="button" id="add-parcela" class="btn-secondary">
+                        <i class="fas fa-plus"></i> Adicionar Parcela Intermediária
+                    </button>
+                </div>
+
+                <div class="form-section">
+                    <h2>Resumo do Financiamento</h2>
+                    <div class="summary-item">
+                        <span>Total "Até as Chaves":</span>
+                        <span id="total-ate-chaves">R$ 0,00</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>Saldo para Financiamento:</span>
+                        <span id="saldo-financiamento">R$ 0,00</span>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button type="button" id="calcular" class="btn-primary">Calcular</button>
+                    <button type="button" id="exportar" class="btn-primary" disabled>Exportar Relatório</button>
+                </div>
+            </form>
+
+            <div id="resultado" class="resultado hidden">
+                <h2>Resultado da Simulação</h2>
+                <div id="fluxo-pagamento"></div>
+            </div>
+        </main>
+
+        <footer>
+            <p>© 2023 VPL Simulação - Desenvolvido por <a href="https://github.com/CodeTiALF" target="_blank">CodeTiALF</a></p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
