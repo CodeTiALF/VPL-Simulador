@@ -468,13 +468,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 head = [['N°', 'Tipo', 'Data', 'Valor', 'Acumulado', '% do Total']];
             }
 
-            // Extrai todas as células de cada linha, incluindo as de correção quando habilitadas
+            // Extrai apenas as linhas do corpo da tabela (não inclui os totais)
             const body = Array.from(tabelaHTML.querySelectorAll('tbody tr')).map(tr => {
                 const cells = Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim());
                 return cells;
             });
 
-            // Configura e gera a tabela
+            // Configura e gera a tabela principal
             doc.autoTable({
                 startY: habilitarINCC ? 38 : 32,
                 head: head,
@@ -513,82 +513,48 @@ document.addEventListener('DOMContentLoaded', function() {
                     4: { cellWidth: 25, halign: 'right' },
                     5: { cellWidth: 20, halign: 'right' }
                 },
-                alternateRowStyles: {
-                    fillColor: [248, 248, 248]
-                },
-                margin: { top: 10, left: 10, right: 10 }
+                margin: { left: 10, right: 10 }
             });
 
-            // Adiciona o resumo após a tabela
-            const finalY = doc.lastAutoTable.finalY + 10;
+            // Obtém os valores dos totais diretamente da tabela HTML
+            const tfoot = tabelaHTML.querySelector('tfoot');
+            const totaisRows = Array.from(tfoot.querySelectorAll('tr')).map(tr => 
+                Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim())
+            );
 
-            // Obtém os valores dos totais
-            const totalImovel = valorTabela;
-            const totalAteChaves = parseFloat(document.getElementById('total-ate-chaves').textContent.replace(/[^0-9,-]/g, '').replace(',', '.'));
-            const saldoFinanciamento = parseFloat(document.getElementById('saldo-financiamento').textContent.replace(/[^0-9,-]/g, '').replace(',', '.'));
-            
-            // Se INCC estiver habilitado, obtém o total de correção
-            let totalCorrecao = 0;
-            if (habilitarINCC) {
-                const correcoesElements = Array.from(tabelaHTML.querySelectorAll('tbody tr')).map(tr => 
-                    parseFloat(tr.querySelectorAll('td')[4].textContent.replace(/[^0-9,-]/g, '').replace(',', '.'))
-                );
-                totalCorrecao = correcoesElements.reduce((a, b) => a + b, 0);
-            }
-
-            // Linha separadora
-            doc.setDrawColor(200, 200, 200);
-            doc.setLineWidth(0.1);
-            doc.line(margin, finalY, pageWidth - margin, finalY);
-
-            // Configuração do texto do resumo
-            doc.setFontSize(9);
-            doc.setTextColor(50, 50, 50);
-
-            // Adiciona os totais
-            let currentY = finalY + 6;
-
-            // Total do Imóvel
-            doc.setFont(undefined, 'bold');
-            doc.text("Total do Imóvel:", margin, currentY);
-            doc.text(formatarMoeda(totalImovel), pageWidth - margin, currentY, { align: 'right' });
-            currentY += 6;
-
-            // Adiciona legenda se INCC estiver habilitado
-            if (habilitarINCC) {
-                doc.setFontSize(8);
-                doc.setFont(undefined, 'italic');
-                const legendaX = margin + 10;
-                doc.text("Valor Original", legendaX, currentY);
-                doc.text("Correção INCC", legendaX + 55, currentY);
-                doc.text("Total com Correção", legendaX + 110, currentY);
-                currentY += 5;
-                doc.setFont(undefined, 'normal');
-                doc.setFontSize(9);
-            }
-
-            // Total Até as Chaves
-            doc.text('Total "Até as Chaves":', margin, currentY);
-            
-            if (habilitarINCC) {
-                const col1 = margin + 60;
-                const col2 = col1 + 50;
-                const col3 = col2 + 50;
-                
-                doc.text(formatarMoeda(totalAteChaves), col1, currentY, { align: 'right' });
-                doc.text(formatarMoeda(totalCorrecao), col2, currentY, { align: 'right' });
-                doc.text(formatarMoeda(totalAteChaves + totalCorrecao), col3, currentY, { align: 'right' });
-                doc.text(`${((totalAteChaves / valorTabela) * 100).toFixed(2)}%`, pageWidth - margin, currentY, { align: 'right' });
-            } else {
-                doc.text(formatarMoeda(totalAteChaves), pageWidth - margin - 50, currentY, { align: 'right' });
-                doc.text(`${((totalAteChaves / valorTabela) * 100).toFixed(2)}%`, pageWidth - margin, currentY, { align: 'right' });
-            }
-            currentY += 6;
-
-            // Saldo para Financiamento
-            doc.text("Saldo para Financiamento:", margin, currentY);
-            doc.text(formatarMoeda(saldoFinanciamento), pageWidth - margin - 50, currentY, { align: 'right' });
-            doc.text(`${((saldoFinanciamento / valorTabela) * 100).toFixed(2)}%`, pageWidth - margin, currentY, { align: 'right' });
+            // Gera a tabela de totais com o mesmo estilo da tabela principal
+            doc.autoTable({
+                body: totaisRows,
+                theme: 'grid',
+                startY: doc.lastAutoTable.finalY + 0.5,
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 1,
+                    lineColor: [200, 200, 200],
+                    textColor: [50, 50, 50],
+                    lineWidth: 0.05,
+                    minCellHeight: 6,
+                    fillColor: [248, 248, 248]
+                },
+                columnStyles: habilitarINCC ? {
+                    0: { cellWidth: 10, halign: 'left', fontStyle: 'bold' },
+                    1: { cellWidth: 20, halign: 'left' },
+                    2: { cellWidth: 20, halign: 'left' },
+                    3: { cellWidth: 22, halign: 'right' },
+                    4: { cellWidth: 22, halign: 'right' },
+                    5: { cellWidth: 22, halign: 'right' },
+                    6: { cellWidth: 22, halign: 'right' },
+                    7: { cellWidth: 18, halign: 'right' }
+                } : {
+                    0: { cellWidth: 12, halign: 'left', fontStyle: 'bold' },
+                    1: { cellWidth: 22, halign: 'left' },
+                    2: { cellWidth: 22, halign: 'left' },
+                    3: { cellWidth: 25, halign: 'right' },
+                    4: { cellWidth: 25, halign: 'right' },
+                    5: { cellWidth: 20, halign: 'right' }
+                },
+                margin: { left: 10, right: 10 }
+            });
 
             // Data de geração
             doc.setFontSize(7);
