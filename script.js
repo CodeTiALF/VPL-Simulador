@@ -28,6 +28,25 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Adiciona event listener para o checkbox do INCC
+    const habilitarINCCCheckbox = document.getElementById('habilitar-incc');
+    const taxaINCCInput = document.getElementById('taxa-incc');
+    
+    habilitarINCCCheckbox.addEventListener('change', function() {
+        taxaINCCInput.disabled = !this.checked;
+        if (this.checked) {
+            taxaINCCInput.focus();
+        }
+        // Recalcula se houver dados suficientes
+        verificarFormulario();
+    });
+    
+    taxaINCCInput.addEventListener('change', function() {
+        if (this.value < 0) this.value = 0;
+        if (this.value > 10) this.value = 10;
+        verificarFormulario();
+    });
+
     // Carrega os dados salvos ao iniciar
     carregarFormulario();
 
@@ -293,6 +312,9 @@ document.addEventListener('DOMContentLoaded', function() {
      * Renderiza a tabela de fluxo de pagamento
      */
     function renderizarFluxoPagamento(parcelas, totalAteChaves, saldoFinanciamento, valorTabela) {
+        const habilitarINCC = document.getElementById('habilitar-incc').checked;
+        const taxaINCC = habilitarINCC ? parseFloat(document.getElementById('taxa-incc').value) / 100 : 0;
+        
         let html = `
             <table>
                 <thead>
@@ -301,6 +323,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         <th>Tipo</th>
                         <th>Data</th>
                         <th>Valor</th>
+                        ${habilitarINCC ? `
+                        <th>Correção INCC</th>
+                        <th>Valor Corrigido</th>
+                        ` : ''}
                         <th>Acumulado</th>
                         <th>% do Total</th>
                     </tr>
@@ -309,9 +335,21 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         
         let acumulado = 0;
+        let totalCorrecao = 0;
+        const dataBase = parcelas[0].data; // Data do sinal como base
         
         parcelas.forEach(parcela => {
-            acumulado += parcela.valor;
+            // Calcula meses entre a data base e a data da parcela
+            const mesesDecorridos = (parcela.data.getFullYear() - dataBase.getFullYear()) * 12 + 
+                                   (parcela.data.getMonth() - dataBase.getMonth());
+            
+            // Calcula correção INCC com a taxa personalizada
+            const correcaoINCC = habilitarINCC && mesesDecorridos > 0 ? 
+                               parcela.valor * (Math.pow(1 + taxaINCC, mesesDecorridos) - 1) : 0;
+            const valorCorrigido = parcela.valor + correcaoINCC;
+            
+            totalCorrecao += correcaoINCC;
+            acumulado += valorCorrigido;
             const percentual = (acumulado / valorTabela) * 100;
             
             html += `
@@ -320,6 +358,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>${parcela.tipo}</td>
                     <td>${formatarData(parcela.data)}</td>
                     <td>${formatarMoeda(parcela.valor)}</td>
+                    ${habilitarINCC ? `
+                    <td>${formatarMoeda(correcaoINCC)}</td>
+                    <td>${formatarMoeda(valorCorrigido)}</td>
+                    ` : ''}
                     <td>${formatarMoeda(acumulado)}</td>
                     <td>${percentual.toFixed(2)}%</td>
                 </tr>
@@ -330,21 +372,24 @@ document.addEventListener('DOMContentLoaded', function() {
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="3"><strong>Total do Imóvel:</strong></td>
+                    <td colspan="${habilitarINCC ? '3' : '3'}"><strong>Total do Imóvel:</strong></td>
                     <td><strong>${formatarMoeda(valorTabela)}</strong></td>
-                    <td colspan="2"></td>
+                    <td colspan="${habilitarINCC ? '4' : '2'}"></td>
                 </tr>
                 <tr>
-                    <td colspan="3">Total "Até as Chaves":</td>
+                    <td colspan="${habilitarINCC ? '3' : '3'}">Total "Até as Chaves":</td>
                     <td>${formatarMoeda(totalAteChaves)}</td>
+                    ${habilitarINCC ? `
+                    <td>${formatarMoeda(totalCorrecao)}</td>
+                    <td>${formatarMoeda(totalAteChaves + totalCorrecao)}</td>
+                    ` : ''}
                     <td>${((totalAteChaves / valorTabela) * 100).toFixed(2)}%</td>
                     <td></td>
                 </tr>
                 <tr>
-                    <td colspan="3">Saldo para Financiamento:</td>
+                    <td colspan="${habilitarINCC ? '3' : '3'}">Saldo para Financiamento:</td>
                     <td>${formatarMoeda(saldoFinanciamento)}</td>
-                    <td>${((saldoFinanciamento / valorTabela) * 100).toFixed(2)}%</td>
-                    <td></td>
+                    <td colspan="${habilitarINCC ? '4' : '2'}"></td>
                 </tr>
             </tfoot>
         </table>
@@ -372,6 +417,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function generateAndDownloadPDF() {
         try {
             const doc = new jsPDF();
+            const habilitarINCC = document.getElementById('habilitar-incc').checked;
+            const taxaINCC = habilitarINCC ? parseFloat(document.getElementById('taxa-incc').value) : 0;
 
             // Configurações de estilo
             const styles = {
@@ -403,6 +450,10 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.text(`Valor do Imóvel: ${formatarMoeda(valorTabela)}`, margin, 26);
             doc.text(`Solicitante: ${solicitante}`, pageWidth - margin, 26, { align: 'right' });
 
+            if (habilitarINCC) {
+                doc.text(`Taxa INCC: ${taxaINCC.toFixed(2)}% a.m.`, margin, 32);
+            }
+
             // Obtém os dados da tabela HTML
             const tabelaHTML = document.querySelector('#fluxo-pagamento table');
             if (!tabelaHTML) {
@@ -410,14 +461,22 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // Prepara os dados para a tabela
-            const head = [['N°', 'Tipo', 'Data', 'Valor', 'Acumulado', '% do Total']];
-            const body = Array.from(tabelaHTML.querySelectorAll('tbody tr')).map(tr => 
-                Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim())
-            );
+            let head;
+            if (habilitarINCC) {
+                head = [['N°', 'Tipo', 'Data', 'Valor', 'Correção INCC', 'Valor Corrigido', 'Acumulado', '% do Total']];
+            } else {
+                head = [['N°', 'Tipo', 'Data', 'Valor', 'Acumulado', '% do Total']];
+            }
+
+            // Extrai todas as células de cada linha, incluindo as de correção quando habilitadas
+            const body = Array.from(tabelaHTML.querySelectorAll('tbody tr')).map(tr => {
+                const cells = Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim());
+                return cells;
+            });
 
             // Configura e gera a tabela
             doc.autoTable({
-                startY: 32,
+                startY: habilitarINCC ? 38 : 32,
                 head: head,
                 body: body,
                 theme: 'grid',
@@ -437,7 +496,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     cellPadding: 1,
                     lineHeight: 1
                 },
-                columnStyles: {
+                columnStyles: habilitarINCC ? {
+                    0: { cellWidth: 10, halign: 'left' },
+                    1: { cellWidth: 20, halign: 'left' },
+                    2: { cellWidth: 20, halign: 'center' },
+                    3: { cellWidth: 22, halign: 'right' },
+                    4: { cellWidth: 22, halign: 'right' },
+                    5: { cellWidth: 22, halign: 'right' },
+                    6: { cellWidth: 22, halign: 'right' },
+                    7: { cellWidth: 18, halign: 'right' }
+                } : {
                     0: { cellWidth: 12, halign: 'left' },
                     1: { cellWidth: 22, halign: 'left' },
                     2: { cellWidth: 22, halign: 'center' },
@@ -459,9 +527,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const totalAteChaves = parseFloat(document.getElementById('total-ate-chaves').textContent.replace(/[^0-9,-]/g, '').replace(',', '.'));
             const saldoFinanciamento = parseFloat(document.getElementById('saldo-financiamento').textContent.replace(/[^0-9,-]/g, '').replace(',', '.'));
             
-            // Calcula as porcentagens
-            const pctAteChaves = ((totalAteChaves / totalImovel) * 100).toFixed(2);
-            const pctFinanciamento = ((saldoFinanciamento / totalImovel) * 100).toFixed(2);
+            // Se INCC estiver habilitado, obtém o total de correção
+            let totalCorrecao = 0;
+            if (habilitarINCC) {
+                const correcoesElements = Array.from(tabelaHTML.querySelectorAll('tbody tr')).map(tr => 
+                    parseFloat(tr.querySelectorAll('td')[4].textContent.replace(/[^0-9,-]/g, '').replace(',', '.'))
+                );
+                totalCorrecao = correcoesElements.reduce((a, b) => a + b, 0);
+            }
 
             // Linha separadora
             doc.setDrawColor(200, 200, 200);
@@ -474,25 +547,48 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Adiciona os totais
             let currentY = finalY + 6;
-            const colWidth = (pageWidth - 20) / 2;
 
             // Total do Imóvel
             doc.setFont(undefined, 'bold');
             doc.text("Total do Imóvel:", margin, currentY);
-            doc.text(formatarMoeda(totalImovel), margin + colWidth, currentY, { align: 'right' });
+            doc.text(formatarMoeda(totalImovel), pageWidth - margin, currentY, { align: 'right' });
+            currentY += 6;
+
+            // Adiciona legenda se INCC estiver habilitado
+            if (habilitarINCC) {
+                doc.setFontSize(8);
+                doc.setFont(undefined, 'italic');
+                const legendaX = margin + 10;
+                doc.text("Valor Original", legendaX, currentY);
+                doc.text("Correção INCC", legendaX + 55, currentY);
+                doc.text("Total com Correção", legendaX + 110, currentY);
+                currentY += 5;
+                doc.setFont(undefined, 'normal');
+                doc.setFontSize(9);
+            }
 
             // Total Até as Chaves
-            currentY += 6;
-            doc.setFont(undefined, 'normal');
             doc.text('Total "Até as Chaves":', margin, currentY);
-            doc.text(formatarMoeda(totalAteChaves), margin + colWidth, currentY, { align: 'right' });
-            doc.text(`${pctAteChaves}%`, pageWidth - margin, currentY, { align: 'right' });
+            
+            if (habilitarINCC) {
+                const col1 = margin + 60;
+                const col2 = col1 + 50;
+                const col3 = col2 + 50;
+                
+                doc.text(formatarMoeda(totalAteChaves), col1, currentY, { align: 'right' });
+                doc.text(formatarMoeda(totalCorrecao), col2, currentY, { align: 'right' });
+                doc.text(formatarMoeda(totalAteChaves + totalCorrecao), col3, currentY, { align: 'right' });
+                doc.text(`${((totalAteChaves / valorTabela) * 100).toFixed(2)}%`, pageWidth - margin, currentY, { align: 'right' });
+            } else {
+                doc.text(formatarMoeda(totalAteChaves), pageWidth - margin - 50, currentY, { align: 'right' });
+                doc.text(`${((totalAteChaves / valorTabela) * 100).toFixed(2)}%`, pageWidth - margin, currentY, { align: 'right' });
+            }
+            currentY += 6;
 
             // Saldo para Financiamento
-            currentY += 6;
             doc.text("Saldo para Financiamento:", margin, currentY);
-            doc.text(formatarMoeda(saldoFinanciamento), margin + colWidth, currentY, { align: 'right' });
-            doc.text(`${pctFinanciamento}%`, pageWidth - margin, currentY, { align: 'right' });
+            doc.text(formatarMoeda(saldoFinanciamento), pageWidth - margin - 50, currentY, { align: 'right' });
+            doc.text(`${((saldoFinanciamento / valorTabela) * 100).toFixed(2)}%`, pageWidth - margin, currentY, { align: 'right' });
 
             // Data de geração
             doc.setFontSize(7);
