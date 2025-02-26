@@ -433,6 +433,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const solicitante = document.getElementById('solicitante').value;
             const tabela = document.getElementById('tabela').value;
             const valorTabela = parseFloat(document.getElementById('valor-tabela').value);
+            
+            // Obtém valores para os cálculos
+            const totalAteChaves = parseFloat(document.getElementById('total-ate-chaves').textContent.replace(/[^0-9,-]/g, '').replace(',', '.'));
+            const saldoFinanciamento = parseFloat(document.getElementById('saldo-financiamento').textContent.replace(/[^0-9,-]/g, '').replace(',', '.'));
 
             // Configurações da página
             const pageWidth = doc.internal.pageSize.width;
@@ -474,6 +478,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 return cells;
             });
 
+            // Calcula o total de correção INCC (se habilitado)
+            let totalCorrecao = 0;
+            if (habilitarINCC) {
+                const correcoesElements = Array.from(tabelaHTML.querySelectorAll('tbody tr')).map(tr => 
+                    parseFloat(tr.querySelectorAll('td')[4].textContent.replace(/[^0-9,-]/g, '').replace(',', '.'))
+                );
+                totalCorrecao = correcoesElements.reduce((a, b) => a + b, 0);
+            }
+
             // Configura e gera a tabela principal
             doc.autoTable({
                 startY: habilitarINCC ? 38 : 32,
@@ -483,21 +496,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 styles: {
                     fontSize: 8,
                     cellPadding: 1,
-                    lineColor: [200, 200, 200],
+                    lineColor: [220, 220, 220],
                     textColor: [50, 50, 50],
-                    lineWidth: 0.05,
-                    minCellHeight: 6
+                    lineWidth: 0.1
                 },
                 headStyles: {
                     fillColor: [66, 133, 244],
                     textColor: [255, 255, 255],
                     fontSize: 8,
                     fontStyle: 'bold',
-                    cellPadding: 1,
-                    lineHeight: 1
+                    halign: 'center'
                 },
                 columnStyles: habilitarINCC ? {
-                    0: { cellWidth: 10, halign: 'left' },
+                    0: { cellWidth: 10, halign: 'center' },
                     1: { cellWidth: 20, halign: 'left' },
                     2: { cellWidth: 20, halign: 'center' },
                     3: { cellWidth: 22, halign: 'right' },
@@ -506,7 +517,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     6: { cellWidth: 22, halign: 'right' },
                     7: { cellWidth: 18, halign: 'right' }
                 } : {
-                    0: { cellWidth: 12, halign: 'left' },
+                    0: { cellWidth: 12, halign: 'center' },
                     1: { cellWidth: 22, halign: 'left' },
                     2: { cellWidth: 22, halign: 'center' },
                     3: { cellWidth: 25, halign: 'right' },
@@ -516,55 +527,71 @@ document.addEventListener('DOMContentLoaded', function() {
                 margin: { left: 10, right: 10 }
             });
 
-            // Obtém os valores dos totais diretamente da tabela HTML
-            const tfoot = tabelaHTML.querySelector('tfoot');
-            const totaisRows = Array.from(tfoot.querySelectorAll('tr')).map(tr => 
-                Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim())
-            );
+            // Posição para a tabela de resumo
+            const finalY = doc.lastAutoTable.finalY + 15;
 
-            // Gera a tabela de totais com o mesmo estilo da tabela principal
+            // Adiciona a tabela de resumo financeiro (estilo mais profissional)
+            // Define os dados para a tabela de resumo
+            let resumoData = [];
+            let resumoHead = [['RESUMO FINANCEIRO', '']];
+            
+            if (habilitarINCC) {
+                resumoData = [
+                    ['Total do Imóvel', formatarMoeda(valorTabela)],
+                    ['Pagamentos "Até as Chaves"', formatarMoeda(totalAteChaves)],
+                    ['Correção INCC', formatarMoeda(totalCorrecao)],
+                    ['Total com Correção', formatarMoeda(totalAteChaves + totalCorrecao)],
+                    ['Percentual Pago', `${((totalAteChaves / valorTabela) * 100).toFixed(2)}%`],
+                    ['Saldo para Financiamento', formatarMoeda(saldoFinanciamento)],
+                    ['Percentual a Financiar', `${((saldoFinanciamento / valorTabela) * 100).toFixed(2)}%`]
+                ];
+            } else {
+                resumoData = [
+                    ['Total do Imóvel', formatarMoeda(valorTabela)],
+                    ['Pagamentos "Até as Chaves"', formatarMoeda(totalAteChaves)],
+                    ['Percentual Pago', `${((totalAteChaves / valorTabela) * 100).toFixed(2)}%`],
+                    ['Saldo para Financiamento', formatarMoeda(saldoFinanciamento)],
+                    ['Percentual a Financiar', `${((saldoFinanciamento / valorTabela) * 100).toFixed(2)}%`]
+                ];
+            }
+
+            // Cria a tabela de resumo financeiro
             doc.autoTable({
-                body: totaisRows,
+                startY: finalY,
+                head: resumoHead,
+                body: resumoData,
                 theme: 'grid',
-                startY: doc.lastAutoTable.finalY + 0.5,
                 styles: {
-                    fontSize: 8,
-                    cellPadding: 1,
-                    lineColor: [200, 200, 200],
+                    fontSize: 9,
+                    cellPadding: 5,
+                    lineColor: [180, 180, 180],
                     textColor: [50, 50, 50],
-                    lineWidth: 0.05,
-                    minCellHeight: 6,
-                    fillColor: [248, 248, 248]
+                    lineWidth: 0.1
                 },
-                columnStyles: habilitarINCC ? {
-                    0: { cellWidth: 10, halign: 'left', fontStyle: 'bold' },
-                    1: { cellWidth: 20, halign: 'left' },
-                    2: { cellWidth: 20, halign: 'left' },
-                    3: { cellWidth: 22, halign: 'right' },
-                    4: { cellWidth: 22, halign: 'right' },
-                    5: { cellWidth: 22, halign: 'right' },
-                    6: { cellWidth: 22, halign: 'right' },
-                    7: { cellWidth: 18, halign: 'right' }
-                } : {
-                    0: { cellWidth: 12, halign: 'left', fontStyle: 'bold' },
-                    1: { cellWidth: 22, halign: 'left' },
-                    2: { cellWidth: 22, halign: 'left' },
-                    3: { cellWidth: 25, halign: 'right' },
-                    4: { cellWidth: 25, halign: 'right' },
-                    5: { cellWidth: 20, halign: 'right' }
+                headStyles: {
+                    fillColor: [80, 80, 80],
+                    textColor: [255, 255, 255],
+                    fontSize: 10,
+                    fontStyle: 'bold',
+                    halign: 'center'
                 },
-                margin: { left: 10, right: 10 }
+                columnStyles: {
+                    0: { cellWidth: 100, fontStyle: 'bold' },
+                    1: { cellWidth: 80, halign: 'right' }
+                },
+                alternateRowStyles: {
+                    fillColor: [245, 245, 245]
+                },
+                tableWidth: 180,
+                margin: { left: (pageWidth - 180) / 2 } // Centraliza a tabela
             });
 
-            // Data de geração
+            // Adiciona informações de rodapé
+            const dataGeracao = new Date().toLocaleString('pt-BR');
             doc.setFontSize(7);
             doc.setTextColor(128, 128, 128);
-            doc.text(
-                `Gerado em: ${new Date().toLocaleString('pt-BR')}`,
-                pageWidth - margin,
-                doc.internal.pageSize.height - 10,
-                { align: 'right' }
-            );
+            doc.text(`Gerado em: ${dataGeracao}`, pageWidth - margin, doc.internal.pageSize.height - 10, { align: 'right' });
+            doc.text('Sistema VPL - Simulador de Pagamentos', margin, doc.internal.pageSize.height - 10);
 
             // Download do PDF
             doc.save(`VPL_Simulacao_${unidade}_${new Date().toISOString().slice(0, 10)}.pdf`);
