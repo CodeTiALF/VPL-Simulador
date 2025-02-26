@@ -19,7 +19,13 @@
     <title>VPL Simulação - Imóveis na Planta</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Atualiza as bibliotecas para versões específicas e carrega na ordem correta -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script>
+        // Garante que o jsPDF está disponível globalmente
+        window.jsPDF = window.jspdf.jsPDF;
+    </script>
 </head>
 <body>
     <div class="container">
@@ -37,6 +43,34 @@
 
         <main>
             <form id="vpl-form">
+                <div class="form-section">
+                    <h2>Informações da Simulação</h2>
+                    <div class="grid-2">
+                        <div class="input-group">
+                            <label for="tabela">Tabela:</label>
+                            <select id="tabela" name="tabela" required>
+                                <option value="">Selecione a tabela</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="solicitante">Solicitante:</label>
+                            <select id="solicitante" name="solicitante" required>
+                                <option value="">Selecione o solicitante</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="input-group unidade-group">
+                            <label for="unidade">Unidade:</label>
+                            <input type="text" id="unidade" name="unidade" required maxlength="10">
+                        </div>
+                        <div class="input-group">
+                            <label for="comprador">Comprador:</label>
+                            <input type="text" id="comprador" name="comprador" required>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-section">
                     <h2>Informações do Imóvel</h2>
                     <div class="input-group">

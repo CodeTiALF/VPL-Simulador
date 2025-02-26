@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultado = document.getElementById('resultado');
     const fluxoPagamento = document.getElementById('fluxo-pagamento');
     
+    // Carrega as opções dos selects
+    carregarOpcoesSelects();
+    
     // Controle de tema (claro/escuro)
     initTheme();
     themeSwitch.addEventListener('change', toggleTheme);
@@ -18,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
     exportarBtn.addEventListener('click', exportarRelatorio);
     
     // Event listeners para atualização automática dos resultados
-    document.querySelectorAll('input').forEach(input => {
+    document.querySelectorAll('input, select').forEach(input => {
         input.addEventListener('change', () => {
             verificarFormulario();
             salvarFormulario();
@@ -27,6 +30,53 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Carrega os dados salvos ao iniciar
     carregarFormulario();
+
+    /**
+     * Carrega as opções dos selects a partir dos arquivos TXT
+     */
+    async function carregarOpcoesSelects() {
+        try {
+            // Carrega opções da tabela
+            const respostaTabela = await fetch('tabela_nomes.txt');
+            const textoTabela = await respostaTabela.text();
+            const opcoesTabela = textoTabela.split('\n').filter(linha => linha.trim());
+            
+            const selectTabela = document.getElementById('tabela');
+            opcoesTabela.forEach(opcao => {
+                if (opcao.trim() && !opcao.startsWith('//')) {
+                    const option = document.createElement('option');
+                    option.value = opcao.trim();
+                    option.textContent = opcao.trim();
+                    selectTabela.appendChild(option);
+                }
+            });
+
+            // Carrega opções de solicitante
+            const respostaSolicitante = await fetch('solicitante_nomes.txt');
+            const textoSolicitante = await respostaSolicitante.text();
+            const opcoesSolicitante = textoSolicitante.split('\n').filter(linha => linha.trim());
+            
+            const selectSolicitante = document.getElementById('solicitante');
+            opcoesSolicitante.forEach(opcao => {
+                if (opcao.trim() && !opcao.startsWith('//')) {
+                    const option = document.createElement('option');
+                    option.value = opcao.trim();
+                    option.textContent = opcao.trim();
+                    selectSolicitante.appendChild(option);
+                }
+            });
+
+            // Recupera valores salvos após carregar as opções
+            const dadosSalvos = localStorage.getItem('vplFormData');
+            if (dadosSalvos) {
+                const dados = JSON.parse(dadosSalvos);
+                selectTabela.value = dados.tabela || '';
+                selectSolicitante.value = dados.solicitante || '';
+            }
+        } catch (erro) {
+            console.error('Erro ao carregar opções dos selects:', erro);
+        }
+    }
     
     /**
      * Inicializa o tema com base na preferência salva
@@ -94,13 +144,19 @@ document.addEventListener('DOMContentLoaded', function() {
      * Verifica se todos os campos do formulário estão preenchidos
      */
     function verificarFormulario() {
+        const tabela = document.getElementById('tabela').value;
+        const solicitante = document.getElementById('solicitante').value;
+        const unidade = document.getElementById('unidade').value;
+        const comprador = document.getElementById('comprador').value;
         const valorTabela = parseFloat(document.getElementById('valor-tabela').value) || 0;
         const valorSinal = parseFloat(document.getElementById('valor-sinal').value) || 0;
         const dataSinal = document.getElementById('data-sinal').value;
         const qtdMensais = parseInt(document.getElementById('qtd-mensais').value) || 0;
         const valorMensais = parseFloat(document.getElementById('valor-mensais').value) || 0;
         
-        let formPreenchido = valorTabela > 0 && valorSinal > 0 && dataSinal && qtdMensais > 0 && valorMensais > 0;
+        let formPreenchido = tabela && solicitante && unidade && comprador && 
+                            valorTabela > 0 && valorSinal > 0 && dataSinal && 
+                            qtdMensais > 0 && valorMensais > 0;
         
         // Verifica se todas as parcelas intermediárias estão preenchidas
         const parcelasIntermediarias = document.querySelectorAll('.parcela-intermediaria');
@@ -281,12 +337,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 <tr>
                     <td colspan="3">Total "Até as Chaves":</td>
                     <td>${formatarMoeda(totalAteChaves)}</td>
-                    <td colspan="2">${((totalAteChaves / valorTabela) * 100).toFixed(2)}%</td>
+                    <td>${((totalAteChaves / valorTabela) * 100).toFixed(2)}%</td>
+                    <td></td>
                 </tr>
                 <tr>
                     <td colspan="3">Saldo para Financiamento:</td>
                     <td>${formatarMoeda(saldoFinanciamento)}</td>
-                    <td colspan="2">${((saldoFinanciamento / valorTabela) * 100).toFixed(2)}%</td>
+                    <td>${((saldoFinanciamento / valorTabela) * 100).toFixed(2)}%</td>
+                    <td></td>
                 </tr>
             </tfoot>
         </table>
@@ -308,168 +366,168 @@ document.addEventListener('DOMContentLoaded', function() {
             timestamp: new Date()
         });
 
-        // Adiciona o script jsPDF ao documento se não existir
-        if (!window.jsPDF) {
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-            script.onload = () => generateAndDownloadPDF();
-            document.head.appendChild(script);
-        } else {
-            generateAndDownloadPDF();
-        }
+        generateAndDownloadPDF();
     }
     
     function generateAndDownloadPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        const elementoExportar = document.querySelector('.resultado');
-        
-        // Configurações de estilo
-        const styles = {
-            header: { fontSize: 14, fontStyle: 'bold', textColor: [66, 133, 244] },
-            title: { fontSize: 12, fontStyle: 'bold', textColor: [51, 51, 51] },
-            tableHeader: { fontSize: 9, fontStyle: 'bold', textColor: [255, 255, 255], fillColor: [66, 133, 244] },
-            tableRow: { fontSize: 8, fontStyle: 'normal', textColor: [51, 51, 51] },
-            tableFooter: { fontSize: 9, fontStyle: 'bold', textColor: [51, 51, 51] },
-            rowHeight: 5, // Altura reduzida das linhas
-            stripedRow: [240, 240, 240] // Cor para linhas alternadas
-        };
+        try {
+            const doc = new jsPDF();
 
-        // Adiciona título
-        doc.setFontSize(styles.header.fontSize);
-        doc.setTextColor(...styles.header.textColor);
-        doc.text('Simulação VPL', 105, 15, { align: 'center' });
+            // Configurações de estilo
+            const styles = {
+                header: { fontSize: 14, fontStyle: 'bold', textColor: [66, 133, 244] },
+                title: { fontSize: 11, fontStyle: 'bold', textColor: [51, 51, 51] },
+                info: { fontSize: 10, fontStyle: 'normal', textColor: [51, 51, 51] }
+            };
 
-        // Dados do imóvel
-        const valorTabela = document.getElementById('valor-tabela').value;
-        doc.setFontSize(styles.title.fontSize);
-        doc.setTextColor(...styles.title.textColor);
-        doc.text(`Valor do Imóvel: ${formatarMoeda(parseFloat(valorTabela))}`, 10, 22);
+            // Obtém os dados do formulário
+            const unidade = document.getElementById('unidade').value;
+            const comprador = document.getElementById('comprador').value;
+            const solicitante = document.getElementById('solicitante').value;
+            const tabela = document.getElementById('tabela').value;
+            const valorTabela = parseFloat(document.getElementById('valor-tabela').value);
 
-        // Configuração da tabela
-        const startY = 28;
-        const margin = 10;
-        const pageWidth = doc.internal.pageSize.width;
-        const tableWidth = pageWidth - (margin * 2);
-        const columns = [
-            { header: 'N°', width: 15, align: 'left' },
-            { header: 'Tipo', width: 30, align: 'left' },
-            { header: 'Data', width: 25, align: 'center' },
-            { header: 'Valor', width: 35, align: 'right' },
-            { header: 'Acumulado', width: 35, align: 'right' },
-            { header: '% Total', width: 25, align: 'right' }
-        ];
+            // Configurações da página
+            const pageWidth = doc.internal.pageSize.width;
+            const margin = 10;
 
-        // Desenha cabeçalho da tabela
-        let currentY = startY;
-        
-        // Desenha borda superior da tabela
-        doc.setDrawColor(220, 220, 220);
-        doc.setLineWidth(0.1);
-        doc.line(margin, currentY, margin + tableWidth, currentY);
+            // Título e cabeçalho
+            doc.setFontSize(styles.header.fontSize);
+            doc.setTextColor(...styles.header.textColor);
+            doc.text(`Simulação VPL - Unidade ${unidade} - ${comprador}`, pageWidth / 2, 12, { align: 'center' });
 
-        // Fundo do cabeçalho
-        doc.setFillColor(...styles.tableHeader.fillColor);
-        doc.rect(margin, currentY, tableWidth, styles.rowHeight + 1, 'F');
-        
-        // Texto do cabeçalho
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(styles.tableHeader.fontSize);
-        let currentX = margin;
-        columns.forEach(col => {
-            doc.text(col.header, currentX + (col.align === 'right' ? col.width : 2), currentY + 4);
-            currentX += col.width;
-            // Linha vertical divisória
-            doc.line(currentX, currentY, currentX, currentY + styles.rowHeight + 1);
-        });
+            // Informações do imóvel
+            doc.setFontSize(styles.info.fontSize);
+            doc.setTextColor(...styles.info.textColor);
+            doc.text(`Tabela: ${tabela}`, margin, 20);
+            doc.text(`Valor do Imóvel: ${formatarMoeda(valorTabela)}`, margin, 26);
+            doc.text(`Solicitante: ${solicitante}`, pageWidth - margin, 26, { align: 'right' });
 
-        // Obtem dados da tabela
-        const rows = Array.from(elementoExportar.querySelectorAll('tbody tr'));
-        const footerRows = Array.from(elementoExportar.querySelectorAll('tfoot tr'));
-
-        // Desenha linhas da tabela
-        currentY += styles.rowHeight + 1;
-        doc.setTextColor(...styles.tableRow.textColor);
-        doc.setFontSize(styles.tableRow.fontSize);
-
-        rows.forEach((row, index) => {
-            const cells = Array.from(row.querySelectorAll('td'));
-            
-            // Adiciona nova página se necessário
-            if (currentY > 280) {
-                doc.addPage();
-                currentY = 20;
+            // Obtém os dados da tabela HTML
+            const tabelaHTML = document.querySelector('#fluxo-pagamento table');
+            if (!tabelaHTML) {
+                throw new Error('Tabela não encontrada. Execute a simulação primeiro.');
             }
 
-            // Fundo alternado para linhas
-            if (index % 2 === 1) {
-                doc.setFillColor(...styles.stripedRow);
-                doc.rect(margin, currentY, tableWidth, styles.rowHeight, 'F');
-            }
+            // Prepara os dados para a tabela
+            const head = [['N°', 'Tipo', 'Data', 'Valor', 'Acumulado', '% do Total']];
+            const body = Array.from(tabelaHTML.querySelectorAll('tbody tr')).map(tr => 
+                Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim())
+            );
 
-            // Desenha células
-            currentX = margin;
-            cells.forEach((cell, i) => {
-                const text = cell.textContent.trim();
-                doc.text(text, currentX + (columns[i].align === 'right' ? columns[i].width - 2 : 2), 
-                    currentY + 3.5, { align: columns[i].align });
-                currentX += columns[i].width;
-                // Linha vertical divisória
-                doc.line(currentX, currentY, currentX, currentY + styles.rowHeight);
+            // Configura e gera a tabela
+            doc.autoTable({
+                startY: 32,
+                head: head,
+                body: body,
+                theme: 'grid',
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 1,
+                    lineColor: [200, 200, 200],
+                    textColor: [50, 50, 50],
+                    lineWidth: 0.05,
+                    minCellHeight: 6
+                },
+                headStyles: {
+                    fillColor: [66, 133, 244],
+                    textColor: [255, 255, 255],
+                    fontSize: 8,
+                    fontStyle: 'bold',
+                    cellPadding: 1,
+                    lineHeight: 1
+                },
+                columnStyles: {
+                    0: { cellWidth: 12, halign: 'left' },
+                    1: { cellWidth: 22, halign: 'left' },
+                    2: { cellWidth: 22, halign: 'center' },
+                    3: { cellWidth: 25, halign: 'right' },
+                    4: { cellWidth: 25, halign: 'right' },
+                    5: { cellWidth: 20, halign: 'right' }
+                },
+                alternateRowStyles: {
+                    fillColor: [248, 248, 248]
+                },
+                margin: { top: 10, left: 10, right: 10 }
             });
 
-            // Linha horizontal inferior
-            doc.line(margin, currentY + styles.rowHeight, margin + tableWidth, currentY + styles.rowHeight);
-            currentY += styles.rowHeight;
-        });
+            // Adiciona o resumo após a tabela
+            const finalY = doc.lastAutoTable.finalY + 10;
 
-        // Desenha rodapé da tabela
-        doc.setFillColor(245, 245, 245);
-        const footerHeight = styles.rowHeight + 1;
-        doc.rect(margin, currentY, tableWidth, footerHeight * footerRows.length, 'F');
-        doc.setFontSize(styles.tableFooter.fontSize);
-        doc.setTextColor(...styles.tableFooter.textColor);
-
-        footerRows.forEach((row, index) => {
-            const cells = Array.from(row.querySelectorAll('td'));
-            currentX = margin;
+            // Obtém os valores dos totais
+            const totalImovel = valorTabela;
+            const totalAteChaves = parseFloat(document.getElementById('total-ate-chaves').textContent.replace(/[^0-9,-]/g, '').replace(',', '.'));
+            const saldoFinanciamento = parseFloat(document.getElementById('saldo-financiamento').textContent.replace(/[^0-9,-]/g, '').replace(',', '.'));
             
-            cells.forEach((cell, i) => {
-                if (cell.colSpan) {
-                    const text = cell.textContent.trim();
-                    const totalWidth = columns.slice(0, cell.colSpan).reduce((sum, col) => sum + col.width, 0);
-                    doc.text(text, currentX + 2, currentY + 4, { align: 'left' });
-                    currentX += totalWidth;
-                } else {
-                    const text = cell.textContent.trim();
-                    doc.text(text, currentX + columns[i].width - 2, currentY + 4, { align: 'right' });
-                    currentX += columns[i].width;
-                }
-                // Linha vertical divisória
-                doc.line(currentX, currentY, currentX, currentY + footerHeight);
-            });
+            // Calcula as porcentagens
+            const pctAteChaves = ((totalAteChaves / totalImovel) * 100).toFixed(2);
+            const pctFinanciamento = ((saldoFinanciamento / totalImovel) * 100).toFixed(2);
 
-            // Linha horizontal inferior
-            doc.line(margin, currentY + footerHeight, margin + tableWidth, currentY + footerHeight);
-            currentY += footerHeight;
-        });
+            // Linha separadora
+            doc.setDrawColor(200, 200, 200);
+            doc.setLineWidth(0.1);
+            doc.line(margin, finalY, pageWidth - margin, finalY);
 
-        // Adiciona data de geração
-        doc.setFontSize(7);
-        doc.setTextColor(128, 128, 128);
-        doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, pageWidth - margin, 
-            doc.internal.pageSize.height - 10, { align: 'right' });
-        
-        // Download do PDF
-        doc.save('VPL_Simulacao_' + new Date().toISOString().slice(0, 10) + '.pdf');
+            // Configuração do texto do resumo
+            doc.setFontSize(9);
+            doc.setTextColor(50, 50, 50);
+
+            // Adiciona os totais
+            let currentY = finalY + 6;
+            const colWidth = (pageWidth - 20) / 2;
+
+            // Total do Imóvel
+            doc.setFont(undefined, 'bold');
+            doc.text("Total do Imóvel:", margin, currentY);
+            doc.text(formatarMoeda(totalImovel), margin + colWidth, currentY, { align: 'right' });
+
+            // Total Até as Chaves
+            currentY += 6;
+            doc.setFont(undefined, 'normal');
+            doc.text('Total "Até as Chaves":', margin, currentY);
+            doc.text(formatarMoeda(totalAteChaves), margin + colWidth, currentY, { align: 'right' });
+            doc.text(`${pctAteChaves}%`, pageWidth - margin, currentY, { align: 'right' });
+
+            // Saldo para Financiamento
+            currentY += 6;
+            doc.text("Saldo para Financiamento:", margin, currentY);
+            doc.text(formatarMoeda(saldoFinanciamento), margin + colWidth, currentY, { align: 'right' });
+            doc.text(`${pctFinanciamento}%`, pageWidth - margin, currentY, { align: 'right' });
+
+            // Data de geração
+            doc.setFontSize(7);
+            doc.setTextColor(128, 128, 128);
+            doc.text(
+                `Gerado em: ${new Date().toLocaleString('pt-BR')}`,
+                pageWidth - margin,
+                doc.internal.pageSize.height - 10,
+                { align: 'right' }
+            );
+
+            // Download do PDF
+            doc.save(`VPL_Simulacao_${unidade}_${new Date().toISOString().slice(0, 10)}.pdf`);
+
+        } catch (error) {
+            console.error('Erro ao gerar PDF:', error);
+            alert('Ocorreu um erro ao gerar o PDF. Por favor, tente novamente.');
+        }
     }
-    
+
     /**
      * Registra logs no servidor usando PHP
      */
     function registrarLog(dados) {
+        // Adiciona informações da simulação aos dados
+        const dadosCompletos = {
+            ...dados,
+            tabela: document.getElementById('tabela').value,
+            solicitante: document.getElementById('solicitante').value,
+            unidade: document.getElementById('unidade').value,
+            comprador: document.getElementById('comprador').value
+        };
+
         const formData = new FormData();
-        formData.append('dados', JSON.stringify(dados));
+        formData.append('dados', JSON.stringify(dadosCompletos));
         
         fetch('log.php', {
             method: 'POST',
@@ -496,6 +554,10 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function salvarFormulario() {
         const dados = {
+            tabela: document.getElementById('tabela').value,
+            solicitante: document.getElementById('solicitante').value,
+            unidade: document.getElementById('unidade').value,
+            comprador: document.getElementById('comprador').value,
             valorTabela: document.getElementById('valor-tabela').value,
             valorSinal: document.getElementById('valor-sinal').value,
             dataSinal: document.getElementById('data-sinal').value,
@@ -525,6 +587,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const dados = JSON.parse(dadosSalvos);
 
         // Preenche os campos principais
+        document.getElementById('tabela').value = dados.tabela || '';
+        document.getElementById('solicitante').value = dados.solicitante || '';
+        document.getElementById('unidade').value = dados.unidade || '';
+        document.getElementById('comprador').value = dados.comprador || '';
         document.getElementById('valor-tabela').value = dados.valorTabela || '';
         document.getElementById('valor-sinal').value = dados.valorSinal || '';
         document.getElementById('data-sinal').value = dados.dataSinal || '';

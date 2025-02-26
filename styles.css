@@ -163,6 +163,32 @@ input:focus {
     border-color: var(--primary-color);
 }
 
+select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--input-background);
+    color: var(--text-color);
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
+
+select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.unidade-group {
+    max-width: 150px;
+}
+
 .parcela-intermediaria {
     display: flex;
     gap: 15px;
@@ -275,6 +301,14 @@ input:focus {
     text-align: left;
 }
 
+#fluxo-pagamento tfoot td:nth-child(4) {
+    min-width: 120px; /* Garante espaço suficiente para valores monetários */
+}
+
+#fluxo-pagamento tfoot td:nth-child(5) {
+    min-width: 80px; /* Garante espaço suficiente para porcentagens */
+}
+
 #fluxo-pagamento th {
     background-color: var(--primary-color);
     color: white;
@@ -343,5 +377,13 @@ footer a {
     
     .actions {
         flex-direction: column;
+    }
+
+    .grid-2 {
+        grid-template-columns: 1fr;
+    }
+    
+    .unidade-group {
+        max-width: 100%;
     }
 }
