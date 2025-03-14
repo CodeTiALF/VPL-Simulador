@@ -17,7 +17,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VPL Simulação - Imóveis na Planta</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="/public/css/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Atualiza as bibliotecas para versões específicas e carrega na ordem correta -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -154,6 +154,6 @@
         </footer>
     </div>
 
-    <script src="script.js"></script>
+    <script src="/public/js/script.js"></script>
 </body>
 </html>
